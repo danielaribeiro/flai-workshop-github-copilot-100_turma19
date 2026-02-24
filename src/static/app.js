@@ -20,24 +20,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        // Create participants list HTML
-        let participantsHTML = "";
-        if (details.participants && details.participants.length > 0) {
-          participantsHTML = `
-            <div class="participants-section">
-              <strong>Participants:</strong>
-              <ul class="participants-list">
-                ${details.participants.map(email => `<li>${email}</li>`).join("")}
-              </ul>
-            </div>
-          `;
-        } else {
-          participantsHTML = `
-            <div class="participants-section empty">
-              <em>No participants yet.</em>
-            </div>
-          `;
-        }
+            // Create participants list HTML with delete icon
+            let participantsHTML = "";
+            if (details.participants && details.participants.length > 0) {
+              participantsHTML = `
+                <div class="participants-section">
+                  <strong>Participants:</strong>
+                  <ul class="participants-list">
+                    ${details.participants.map(email => `
+                      <li class="participant-item">
+                        <span class="participant-email">${email}</span>
+                        <span class="delete-participant" title="Remove participant" data-activity="${encodeURIComponent(name)}" data-email="${encodeURIComponent(email)}">&#128465;</span>
+                      </li>
+                    `).join("")}
+                  </ul>
+                </div>
+              `;
+            } else {
+              participantsHTML = `
+                <div class="participants-section empty">
+                  <em>No participants yet.</em>
+                </div>
+              `;
+            }
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
@@ -49,6 +54,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
         activitiesList.appendChild(activityCard);
 
+        // Add delete event listeners after DOM insertion
+        const deleteIcons = activityCard.querySelectorAll('.delete-participant');
+        deleteIcons.forEach(icon => {
+          icon.addEventListener('click', async (e) => {
+            const activityName = decodeURIComponent(icon.getAttribute('data-activity'));
+            const email = decodeURIComponent(icon.getAttribute('data-email'));
+            if (!confirm(`Remove ${email} from ${activityName}?`)) return;
+            try {
+              const response = await fetch(`/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`, {
+                method: 'POST',
+              });
+              if (response.ok) {
+                // Refresh activities list
+                fetchActivities();
+              } else {
+                const result = await response.json();
+                alert(result.detail || 'Failed to remove participant.');
+              }
+            } catch (error) {
+              alert('Failed to remove participant.');
+              console.error('Error removing participant:', error);
+            }
+          });
+        });
         // Add option to select dropdown
         const option = document.createElement("option");
         option.value = name;
